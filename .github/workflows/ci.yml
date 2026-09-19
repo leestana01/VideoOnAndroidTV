@@ -48,6 +48,8 @@ jobs:
         with:
           name: minified-release-apk
           path: artifacts
+      - name: Enable KVM acceleration
+        run: sudo chmod 666 /dev/kvm
       - name: Install and prove launcher on API 21
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
@@ -59,13 +61,15 @@ jobs:
           emulator-boot-timeout: 600
           script: |
             adb install artifacts/app-release.apk
-            adb shell am start -W -n com.leestana.videoontv/.MainActivity
+            adb shell am start -n com.leestana.videoontv/.MainActivity
             sleep 5
             adb shell pidof com.leestana.videoontv
+            adb shell dumpsys activity activities | grep -E 'mResumedActivity.*com.leestana.videoontv'
             adb shell am force-stop com.leestana.videoontv
-            adb shell am start -W -n com.leestana.videoontv/.MainActivity
+            adb shell am start -n com.leestana.videoontv/.MainActivity
             sleep 3
             adb shell pidof com.leestana.videoontv
+            adb shell dumpsys activity activities | grep -E 'mResumedActivity.*com.leestana.videoontv'
 
   aggregate:
     if: always()
