@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Vela Player</string>
+    <string name="open_video">Open video</string>
+    <string name="open_usb">Browse USB / folder</string>
+    <string name="phone_audio">Phone audio</string>
+    <string name="audio_boost">Audio %1$d%%</string>
+    <string name="empty_title">Your screen. Your media.</string>
+    <string name="empty_body">Play local, USB, network and shared files with a remote-first interface.</string>
+</resources>
+
