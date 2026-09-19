@@ -1,0 +1,11 @@
+<resources>
+    <style name="Theme.VideoOnTV" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">@color/ink</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:navigationBarColor">@color/ink</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>
+
