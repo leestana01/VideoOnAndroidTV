@@ -10,8 +10,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:keepScreenOn="true"
-        app:controller_auto_show="true"
-        app:controller_hide_on_touch="true"
         app:resize_mode="fit"
         app:show_buffering="when_playing"
         app:show_next_button="false"
@@ -118,4 +116,3 @@
             android:textColor="@color/text_primary" />
     </LinearLayout>
 </FrameLayout>
-
