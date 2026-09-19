@@ -43,7 +43,9 @@ android {
         }
         release {
             isMinifyEnabled = true
-            isShrinkResources = true
+            // AGP resource shrinking can corrupt binary XML string pools on API 21.
+            // Keep R8 code shrinking while preserving legacy-device resource integrity.
+            isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (keystoreFile.exists()) signingConfig = signingConfigs.getByName("release")
         }
