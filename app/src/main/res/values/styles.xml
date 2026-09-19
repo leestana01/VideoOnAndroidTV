@@ -5,7 +5,5 @@
         <item name="android:windowBackground">@color/ink</item>
         <item name="android:colorAccent">@color/accent</item>
         <item name="android:navigationBarColor">@color/ink</item>
-        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>
-
