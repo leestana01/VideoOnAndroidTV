@@ -61,15 +61,16 @@ jobs:
           emulator-boot-timeout: 600
           script: |
             adb install artifacts/app-release.apk
+            adb logcat -c
             adb shell am start -n com.leestana.videoontv/.MainActivity
             sleep 5
-            adb shell pidof com.leestana.videoontv
-            adb shell dumpsys activity activities | grep -E 'mResumedActivity.*com.leestana.videoontv'
+            adb shell ps | grep 'com.leestana.videoontv' || { adb logcat -d -t 200; exit 1; }
+            adb shell dumpsys activity top | grep 'ACTIVITY com.leestana.videoontv/.MainActivity' || { adb logcat -d -t 200; exit 1; }
             adb shell am force-stop com.leestana.videoontv
             adb shell am start -n com.leestana.videoontv/.MainActivity
             sleep 3
-            adb shell pidof com.leestana.videoontv
-            adb shell dumpsys activity activities | grep -E 'mResumedActivity.*com.leestana.videoontv'
+            adb shell ps | grep 'com.leestana.videoontv' || { adb logcat -d -t 200; exit 1; }
+            adb shell dumpsys activity top | grep 'ACTIVITY com.leestana.videoontv/.MainActivity' || { adb logcat -d -t 200; exit 1; }
 
   aggregate:
     if: always()
