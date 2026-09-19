@@ -62,7 +62,6 @@
                 android:focusable="true"
                 android:gravity="center"
                 android:text="@string/open_video"
-                android:textAllCaps="false"
                 android:textColor="@color/text_primary"
                 android:textSize="17sp" />
 
@@ -75,7 +74,6 @@
                 android:focusable="true"
                 android:gravity="center"
                 android:text="@string/open_usb"
-                android:textAllCaps="false"
                 android:textColor="@color/text_primary"
                 android:textSize="17sp" />
         </LinearLayout>
@@ -98,7 +96,6 @@
             android:focusable="true"
             android:gravity="center"
             android:text="Audio 100%"
-            android:textAllCaps="false"
             android:textColor="@color/text_primary" />
 
         <TextView
@@ -110,7 +107,6 @@
             android:focusable="true"
             android:gravity="center"
             android:text="@string/phone_audio"
-            android:textAllCaps="false"
             android:textColor="@color/text_primary" />
 
         <TextView
@@ -122,7 +118,6 @@
             android:focusable="true"
             android:gravity="center"
             android:text="Change video"
-            android:textAllCaps="false"
             android:textColor="@color/text_primary" />
     </LinearLayout>
 </FrameLayout>
