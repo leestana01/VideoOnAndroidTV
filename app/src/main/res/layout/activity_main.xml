@@ -54,22 +54,26 @@
             android:layout_marginTop="36dp"
             android:orientation="horizontal">
 
-            <Button
+            <TextView
                 android:id="@+id/open_file"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/button_background"
+                android:focusable="true"
+                android:gravity="center"
                 android:text="@string/open_video"
                 android:textAllCaps="false"
                 android:textColor="@color/text_primary"
                 android:textSize="17sp" />
 
-            <Button
+            <TextView
                 android:id="@+id/open_folder"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="18dp"
                 android:background="@drawable/button_background"
+                android:focusable="true"
+                android:gravity="center"
                 android:text="@string/open_usb"
                 android:textAllCaps="false"
                 android:textColor="@color/text_primary"
@@ -86,31 +90,37 @@
         android:orientation="horizontal"
         android:visibility="gone">
 
-        <Button
+        <TextView
             android:id="@+id/boost"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@drawable/button_background"
+            android:focusable="true"
+            android:gravity="center"
             android:text="Audio 100%"
             android:textAllCaps="false"
             android:textColor="@color/text_primary" />
 
-        <Button
+        <TextView
             android:id="@+id/relay"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:background="@drawable/button_background"
+            android:focusable="true"
+            android:gravity="center"
             android:text="@string/phone_audio"
             android:textAllCaps="false"
             android:textColor="@color/text_primary" />
 
-        <Button
+        <TextView
             android:id="@+id/change_media"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:background="@drawable/button_background"
+            android:focusable="true"
+            android:gravity="center"
             android:text="Change video"
             android:textAllCaps="false"
             android:textColor="@color/text_primary" />

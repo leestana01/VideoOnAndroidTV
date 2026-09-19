@@ -8,7 +8,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.SeekBar
@@ -36,7 +35,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var playerView: PlayerView
     private lateinit var emptyState: View
     private lateinit var quickActions: View
-    private lateinit var boostButton: Button
+    private lateinit var boostButton: TextView
     private lateinit var store: PlaybackStore
     private lateinit var relayServer: AudioRelayServer
     private var currentUri: Uri? = null
@@ -68,8 +67,8 @@ class MainActivity : AppCompatActivity() {
         emptyState = findViewById(R.id.empty_state)
         quickActions = findViewById(R.id.quick_actions)
         boostButton = findViewById(R.id.boost)
-        findViewById<Button>(R.id.open_file).setOnClickListener { openFile.launch(arrayOf("video/*", "audio/*")) }
-        findViewById<Button>(R.id.open_folder).setOnClickListener { openFolder.launch(null) }
+        findViewById<TextView>(R.id.open_file).setOnClickListener { openFile.launch(arrayOf("video/*", "audio/*")) }
+        findViewById<TextView>(R.id.open_folder).setOnClickListener { openFolder.launch(null) }
     }
 
     private fun createPlayer() {
@@ -95,9 +94,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureActions() {
-        findViewById<Button>(R.id.change_media).setOnClickListener { openFile.launch(arrayOf("video/*", "audio/*")) }
+        findViewById<TextView>(R.id.change_media).setOnClickListener { openFile.launch(arrayOf("video/*", "audio/*")) }
         boostButton.setOnClickListener { showBoostDialog() }
-        findViewById<Button>(R.id.relay).setOnClickListener { showRelayDialog() }
+        findViewById<TextView>(R.id.relay).setOnClickListener { showRelayDialog() }
     }
 
     private fun persistAndPlay(uri: Uri) {
@@ -227,7 +226,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN || currentUri == null) return super.dispatchKeyEvent(event)
-        if (currentFocus is Button || currentFocus is SeekBar) return super.dispatchKeyEvent(event)
+        if ((currentFocus?.isClickable == true && currentFocus !== playerView) || currentFocus is SeekBar) {
+            return super.dispatchKeyEvent(event)
+        }
         return when (event.keyCode) {
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                 if (player.isPlaying) player.pause() else player.play(); playerView.showController(); true
