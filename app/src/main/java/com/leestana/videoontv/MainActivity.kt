@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var boostButton: TextView
     private lateinit var openFileButton: TextView
     private lateinit var seekFeedback: TextView
+    private lateinit var mediaBrowser: MediaBrowserPanel
     private lateinit var store: PlaybackStore
     private lateinit var relayServer: AudioRelayServer
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -93,6 +94,18 @@ class MainActivity : AppCompatActivity() {
         boostButton = findViewById(R.id.boost)
         openFileButton = findViewById(R.id.open_file)
         seekFeedback = findViewById(R.id.seek_feedback)
+        mediaBrowser = MediaBrowserPanel(
+            context = this,
+            panel = findViewById(R.id.browser_panel),
+            title = findViewById(R.id.browser_title),
+            pathLabel = findViewById(R.id.browser_path),
+            entriesView = findViewById(R.id.browser_entries),
+            onMediaSelected = {
+                mediaBrowser.hide()
+                selectMedia(it.uri)
+            },
+            onChooseStorage = { openFolder.launch(null) },
+        )
         openFileButton.setOnClickListener { openFile.launch(arrayOf("video/*", "audio/*")) }
         findViewById<TextView>(R.id.open_folder).setOnClickListener { browseStorage() }
     }
@@ -145,7 +158,9 @@ class MainActivity : AppCompatActivity() {
     private fun configureBackNavigation() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (currentUri != null) {
+                if (mediaBrowser.navigateBack()) {
+                    return
+                } else if (currentUri != null) {
                     returnHome()
                 } else {
                     isEnabled = false
@@ -218,11 +233,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showMediaBrowser(root: DocumentFile) {
-        MediaBrowserDialog(
-            context = this,
-            onMediaSelected = { selectMedia(it.uri) },
-            onChooseStorage = { openFolder.launch(null) },
-        ).show(root)
+        mediaBrowser.show(root)
     }
 
     private fun returnHome() {
@@ -238,6 +249,7 @@ class MainActivity : AppCompatActivity() {
         quickActions.visibility = View.GONE
         seekFeedback.visibility = View.GONE
         emptyState.visibility = View.VISIBLE
+        mediaBrowser.hide()
         snapshots.update(0, false, 1f)
         openFileButton.requestFocus()
     }
@@ -360,8 +372,8 @@ class MainActivity : AppCompatActivity() {
         hideActions.run()
     }
 
-    private fun showSeekFeedback(forward: Boolean) {
-        seekFeedback.setText(if (forward) R.string.seek_forward_feedback else R.string.seek_back_feedback)
+    private fun showSeekFeedback(messageRes: Int) {
+        seekFeedback.setText(messageRes)
         seekFeedback.visibility = View.VISIBLE
         mainHandler.removeCallbacks(hideSeekFeedback)
         mainHandler.postDelayed(hideSeekFeedback, SEEK_FEEDBACK_TIMEOUT_MS)
@@ -369,13 +381,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun seekBack() {
-        player.seekBack()
-        showSeekFeedback(forward = false)
+        seekBy(-SEEK_INCREMENT_MS, R.string.seek_back_feedback)
     }
 
     private fun seekForward() {
-        player.seekForward()
-        showSeekFeedback(forward = true)
+        seekBy(SEEK_INCREMENT_MS, R.string.seek_forward_feedback)
+    }
+
+    private fun seekBy(deltaMs: Long, feedbackRes: Int) {
+        val target = SeekTarget.calculate(
+            positionMs = player.currentPosition,
+            durationMs = player.duration,
+            deltaMs = deltaMs,
+            isSeekable = player.isCurrentMediaItemSeekable,
+        )
+        if (target == null) {
+            showSeekFeedback(R.string.seek_unavailable)
+            return
+        }
+        player.seekTo(target)
+        updateSnapshot()
+        showSeekFeedback(feedbackRes)
     }
 
     private fun readableError(error: PlaybackException): String = when (error.errorCode) {
@@ -437,6 +463,7 @@ class MainActivity : AppCompatActivity() {
         private const val SNAPSHOT_INTERVAL_MS = 250L
         private const val ACTIONS_TIMEOUT_MS = 5_000L
         private const val SEEK_FEEDBACK_TIMEOUT_MS = 800L
+        private const val SEEK_INCREMENT_MS = 10_000L
         private val DPAD_NAVIGATION_KEYS = setOf(
             KeyEvent.KEYCODE_DPAD_LEFT,
             KeyEvent.KEYCODE_DPAD_RIGHT,
