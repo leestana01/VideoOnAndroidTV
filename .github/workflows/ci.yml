@@ -66,6 +66,7 @@ jobs:
           target: default
           arch: x86
           profile: Nexus 7
+          sdcard-path-or-size: 100M
           disable-animations: true
           emulator-boot-timeout: 600
           script: |
