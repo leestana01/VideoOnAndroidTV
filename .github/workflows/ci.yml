@@ -49,12 +49,14 @@ jobs:
           name: minified-release-apk
           path: artifacts
       - name: Generate seek fixture
-        run: >-
-          ffmpeg -hide_banner -loglevel error
-          -f lavfi -i color=c=black:s=320x180:r=25
-          -f lavfi -i sine=frequency=440:sample_rate=44100
-          -t 30 -c:v libx264 -preset ultrafast -pix_fmt yuv420p
-          -c:a aac -movflags +faststart seek-fixture.mp4
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+          ffmpeg -hide_banner -loglevel error \
+            -f lavfi -i color=c=black:s=320x180:r=25 \
+            -f lavfi -i sine=frequency=440:sample_rate=44100 \
+            -t 30 -c:v libx264 -preset ultrafast -pix_fmt yuv420p \
+            -c:a aac -movflags +faststart seek-fixture.mp4
       - name: Enable KVM acceleration
         run: sudo chmod 666 /dev/kvm
       - name: Install and prove launcher on API 21
