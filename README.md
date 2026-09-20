@@ -34,7 +34,7 @@ Quick actions hide after five seconds while a video is playing. They appear imme
 
 ## USB and folder browser
 
-Choose **Browse USB / folder**, grant a storage root through Android's system picker, then navigate folders in Vela's remote-focused browser. Directories are listed before playable media, common media extensions are recognized even when a USB provider reports a generic MIME type, and the selected root is remembered. Previously watched media offers **Resume** and **Start from beginning** before playback.
+Choose **Browse USB / folder** and grant a storage root once through Android's required permission screen. All navigation after that happens in Vela's own full-screen, D-pad-first file browser. Directories are listed before playable media, common media extensions are recognized even when a USB provider reports a generic MIME type, and the selected root is remembered. Previously watched media offers **Resume** and **Start from beginning** before playback.
 
 ## Phone audio
 

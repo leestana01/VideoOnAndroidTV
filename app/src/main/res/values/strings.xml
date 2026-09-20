@@ -4,11 +4,17 @@
     <string name="open_usb">Browse USB / folder</string>
     <string name="browse_media">Browse media</string>
     <string name="browser_choose_storage">Choose storage</string>
+    <string name="browser_title">Media browser</string>
+    <string name="browser_storage">Storage</string>
+    <string name="browser_close">Close</string>
     <string name="browser_empty">No folders or playable media in this location.</string>
     <string name="browser_unreadable">This folder cannot be read.</string>
     <string name="browser_up">[..] Up</string>
     <string name="browser_folder">[Folder] %1$s</string>
     <string name="browser_media">[Media] %1$s</string>
+    <string name="browser_up_description">Go to parent folder: %1$s</string>
+    <string name="browser_folder_description">Open folder: %1$s</string>
+    <string name="browser_media_description">Play media: %1$s</string>
     <string name="browser_untitled">Untitled</string>
     <string name="storage_unavailable">This storage location is unavailable.</string>
     <string name="resume_title">Continue watching?</string>
@@ -17,6 +23,7 @@
     <string name="start_over">Start from beginning</string>
     <string name="seek_back_feedback">−10 seconds</string>
     <string name="seek_forward_feedback">+10 seconds</string>
+    <string name="seek_unavailable">Seeking is unavailable for this media</string>
     <string name="phone_audio">Phone audio</string>
     <string name="audio_boost">Audio %1$d%%</string>
     <string name="empty_title">Your screen. Your media.</string>
