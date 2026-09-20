@@ -10,10 +10,28 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:keepScreenOn="true"
+        android:visibility="gone"
         app:resize_mode="fit"
+        app:show_fastforward_button="true"
         app:show_buffering="when_playing"
         app:show_next_button="false"
-        app:show_previous_button="false" />
+        app:show_previous_button="false"
+        app:show_rewind_button="true" />
+
+    <TextView
+        android:id="@+id/seek_feedback"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/seek_feedback_background"
+        android:paddingStart="30dp"
+        android:paddingTop="18dp"
+        android:paddingEnd="30dp"
+        android:paddingBottom="18dp"
+        android:textColor="@color/text_primary"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
 
     <LinearLayout
         android:id="@+id/empty_state"
@@ -117,7 +135,7 @@
             android:background="@drawable/button_background"
             android:focusable="true"
             android:gravity="center"
-            android:text="Change video"
+            android:text="@string/browse_media"
             android:textColor="@color/text_primary" />
     </LinearLayout>
 </FrameLayout>
