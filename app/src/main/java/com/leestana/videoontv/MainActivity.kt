@@ -6,6 +6,8 @@ import android.graphics.Bitmap
 import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageView
@@ -38,9 +40,25 @@ class MainActivity : AppCompatActivity() {
     private lateinit var boostButton: TextView
     private lateinit var store: PlaybackStore
     private lateinit var relayServer: AudioRelayServer
-    private var currentUri: Uri? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val snapshots = PlaybackSnapshotCache()
+    @Volatile private var currentUri: Uri? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var enhancerSessionId = C.AUDIO_SESSION_ID_UNSET
     private var boostPercent = 100
+    private val snapshotTicker = object : Runnable {
+        override fun run() {
+            updateSnapshot()
+            mainHandler.postDelayed(this, SNAPSHOT_INTERVAL_MS)
+        }
+    }
+    private val hideActions = Runnable {
+        if (currentUri != null && quickActions.visibility == View.VISIBLE) {
+            val actionsHadFocus = quickActions.hasFocus()
+            quickActions.visibility = View.GONE
+            if (actionsHadFocus) playerView.requestFocus()
+        }
+    }
 
     private val openFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { persistAndPlay(it) }
@@ -56,8 +74,9 @@ class MainActivity : AppCompatActivity() {
         store = PlaybackStore(this)
         bindViews()
         createPlayer()
-        relayServer = AudioRelayServer(contentResolver, { currentUri }, ::snapshot)
+        relayServer = AudioRelayServer(contentResolver, { currentUri }, snapshots)
         runCatching { relayServer.start(10_000, false) }
+        mainHandler.post(snapshotTicker)
         configureActions()
         intent?.data?.let(::play)
     }
@@ -84,7 +103,11 @@ class MainActivity : AppCompatActivity() {
                 true,
             )
             addListener(object : Player.Listener {
-                override fun onAudioSessionIdChanged(audioSessionId: Int) = attachEnhancer(audioSessionId)
+                override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                    attachEnhancer(audioSessionId)
+                    applyBoost()
+                }
+                override fun onEvents(player: Player, events: Player.Events) = updateSnapshot()
                 override fun onPlayerError(error: PlaybackException) {
                     Toast.makeText(this@MainActivity, readableError(error), Toast.LENGTH_LONG).show()
                 }
@@ -94,9 +117,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureActions() {
-        findViewById<TextView>(R.id.change_media).setOnClickListener { openFile.launch(arrayOf("video/*", "audio/*")) }
-        boostButton.setOnClickListener { showBoostDialog() }
-        findViewById<TextView>(R.id.relay).setOnClickListener { showRelayDialog() }
+        findViewById<TextView>(R.id.change_media).setOnClickListener {
+            hideQuickActions()
+            openFile.launch(arrayOf("video/*", "audio/*"))
+        }
+        boostButton.setOnClickListener {
+            hideQuickActions()
+            showBoostDialog()
+        }
+        findViewById<TextView>(R.id.relay).setOnClickListener {
+            hideQuickActions()
+            showRelayDialog()
+        }
     }
 
     private fun persistAndPlay(uri: Uri) {
@@ -110,11 +142,12 @@ class MainActivity : AppCompatActivity() {
         store.save(currentUri, player.currentPosition)
         currentUri = uri
         emptyState.visibility = View.GONE
-        quickActions.visibility = View.VISIBLE
+        showQuickActions(requestFocus = false)
         player.setMediaItem(MediaItem.fromUri(uri), store.load(uri))
         player.prepare()
         player.playWhenReady = true
         playerView.showController()
+        updateSnapshot()
     }
 
     private fun showFolder(treeUri: Uri) {
@@ -146,6 +179,7 @@ class MainActivity : AppCompatActivity() {
             text = "Levels above 100% may distort audio or damage speakers. Start low."
             setPadding(0, 18, 0, 8)
         }
+        val status = TextView(this).apply { setPadding(0, 8, 0, 0) }
         val seek = SeekBar(this).apply {
             max = 400
             progress = boostPercent
@@ -154,7 +188,7 @@ class MainActivity : AppCompatActivity() {
                 override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) {
                     boostPercent = progress
                     value.text = "$progress%"
-                    applyBoost()
+                    status.text = boostStatus(progress, applyBoost())
                 }
                 override fun onStartTrackingTouch(bar: SeekBar?) = Unit
                 override fun onStopTrackingTouch(bar: SeekBar?) = Unit
@@ -163,21 +197,41 @@ class MainActivity : AppCompatActivity() {
         container.addView(value)
         container.addView(seek)
         container.addView(warning)
+        container.addView(status)
+        status.text = boostStatus(boostPercent, applyBoost())
         AlertDialog.Builder(this).setTitle("Audio booster").setView(container).setPositiveButton("Done", null).show()
     }
 
     private fun attachEnhancer(audioSessionId: Int) {
+        if (audioSessionId == enhancerSessionId && loudnessEnhancer != null) return
         loudnessEnhancer?.release()
+        enhancerSessionId = C.AUDIO_SESSION_ID_UNSET
         loudnessEnhancer = if (audioSessionId == C.AUDIO_SESSION_ID_UNSET) null else runCatching {
-            LoudnessEnhancer(audioSessionId).apply { enabled = true }
+            LoudnessEnhancer(audioSessionId).also { enhancerSessionId = audioSessionId }
         }.getOrNull()
-        applyBoost()
     }
 
-    private fun applyBoost() {
+    private fun applyBoost(): Boolean {
         player.volume = AudioGain.playerVolume(boostPercent)
-        runCatching { loudnessEnhancer?.setTargetGain(AudioGain.gainMillibels(boostPercent)) }
+        if (loudnessEnhancer == null && player.audioSessionId != C.AUDIO_SESSION_ID_UNSET) {
+            attachEnhancer(player.audioSessionId)
+        }
+        val targetGain = AudioGain.gainMillibels(boostPercent)
+        val applied = runCatching {
+            loudnessEnhancer?.apply {
+                enabled = false
+                setTargetGain(targetGain)
+                enabled = targetGain > 0
+            }
+        }.isSuccess && (targetGain == 0 || loudnessEnhancer?.enabled == true)
         boostButton.text = getString(R.string.audio_boost, boostPercent)
+        return applied
+    }
+
+    private fun boostStatus(percent: Int, applied: Boolean): String = when {
+        percent <= 100 -> "Standard volume"
+        applied -> "Boost active: +${AudioGain.gainDecibels(percent)} dB"
+        else -> "Audio boost is unavailable on this device or output."
     }
 
     private fun showRelayDialog() {
@@ -215,7 +269,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun snapshot() = PlaybackSnapshot(player.currentPosition.coerceAtLeast(0), player.isPlaying, player.playbackParameters.speed)
+    private fun updateSnapshot() {
+        if (::player.isInitialized) {
+            snapshots.update(player.currentPosition, player.isPlaying, player.playbackParameters.speed)
+        }
+    }
+
+    private fun showQuickActions(requestFocus: Boolean) {
+        quickActions.visibility = View.VISIBLE
+        mainHandler.removeCallbacks(hideActions)
+        if (requestFocus) boostButton.requestFocus()
+        mainHandler.postDelayed(hideActions, ACTIONS_TIMEOUT_MS)
+    }
+
+    private fun hideQuickActions() {
+        mainHandler.removeCallbacks(hideActions)
+        hideActions.run()
+    }
 
     private fun readableError(error: PlaybackException): String = when (error.errorCode) {
         PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
@@ -241,7 +311,7 @@ class MainActivity : AppCompatActivity() {
             }
             KeyEvent.KEYCODE_MEDIA_PLAY -> { player.play(); true }
             KeyEvent.KEYCODE_MEDIA_PAUSE -> { player.pause(); true }
-            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> { quickActions.requestFocus(); true }
+            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> { showQuickActions(requestFocus = true); true }
             else -> super.dispatchKeyEvent(event)
         }
     }
@@ -252,9 +322,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacks(snapshotTicker)
+        mainHandler.removeCallbacks(hideActions)
         relayServer.stop()
         loudnessEnhancer?.release()
         player.release()
         super.onDestroy()
+    }
+
+    companion object {
+        private const val SNAPSHOT_INTERVAL_MS = 250L
+        private const val ACTIONS_TIMEOUT_MS = 5_000L
     }
 }

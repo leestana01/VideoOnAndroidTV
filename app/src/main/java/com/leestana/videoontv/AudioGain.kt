@@ -1,6 +1,7 @@
 package com.leestana.videoontv
 
 import kotlin.math.log10
+import kotlin.math.roundToInt
 
 object AudioGain {
     const val MIN_PERCENT = 0
@@ -15,5 +16,6 @@ object AudioGain {
         if (multiplier <= 1.0) return 0
         return (20.0 * log10(multiplier) * 100.0).toInt()
     }
-}
 
+    fun gainDecibels(percent: Int): Int = (gainMillibels(percent) / 100.0).roundToInt()
+}

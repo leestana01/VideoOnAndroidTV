@@ -38,7 +38,8 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee signing-verification.txt
           cp "$APK" "$OUT"
           sha256sum "$OUT" > "$OUT.sha256"
-          CERT_SHA256=$("$APKSIGNER" verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          CERT_SHA256=$("$APKSIGNER" verify --print-certs "$APK" | sed -n 's/^.*certificate SHA-256 digest: //p' | head -1)
+          test -n "$CERT_SHA256"
           cp "docs/releases/${GITHUB_REF_NAME#v}.md" release-notes.md
           printf '\n## Signing certificate\n\nSHA-256: `%s`\n' "$CERT_SHA256" >> release-notes.md
       - name: Publish GitHub Release
@@ -50,4 +51,3 @@ jobs:
             Vela-Player-*.apk
             Vela-Player-*.apk.sha256
             signing-verification.txt
-

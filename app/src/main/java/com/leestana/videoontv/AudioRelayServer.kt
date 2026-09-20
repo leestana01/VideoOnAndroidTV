@@ -11,12 +11,10 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.security.SecureRandom
 
-data class PlaybackSnapshot(val positionMs: Long, val playing: Boolean, val speed: Float)
-
 class AudioRelayServer(
     private val resolver: ContentResolver,
     private val currentUri: () -> Uri?,
-    private val snapshot: () -> PlaybackSnapshot,
+    private val snapshots: PlaybackSnapshotCache,
 ) : NanoHTTPD(PORT) {
     private val token = ByteArray(12).also(SecureRandom()::nextBytes).joinToString("") { "%02x".format(it) }
 
@@ -40,7 +38,7 @@ class AudioRelayServer(
     private fun html(): Response = newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", RECEIVER_HTML)
 
     private fun state(): Response {
-        val value = snapshot()
+        val value = snapshots.current()
         val json = "{\"positionMs\":${value.positionMs},\"playing\":${value.playing},\"speed\":${value.speed}}"
         return newFixedLengthResponse(Response.Status.OK, "application/json", json)
     }
@@ -113,14 +111,14 @@ class AudioRelayServer(
         private val RECEIVER_HTML = """
             <!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1">
             <title>Vela Phone Audio</title><style>
-            :root{color-scheme:dark}body{font-family:system-ui;background:#080b10;color:#f7f8fa;display:grid;place-items:center;min-height:100vh;margin:0}.card{max-width:28rem;padding:2rem;background:#151922;border-radius:1.5rem;text-align:center}button{background:#66e3c4;color:#080b10;border:0;border-radius:999px;font-weight:700;padding:1rem 1.5rem;font-size:1rem}.muted{color:#a8b0c0}video{position:fixed;width:1px;height:1px;opacity:.01}</style></head>
-            <body><main class="card"><h1>Phone audio</h1><p class="muted">Keep this page open and the phone on the same Wi-Fi network as the TV.</p><button id="start">Start synchronized audio</button><p id="status" class="muted">Waiting</p><video id="media" playsinline preload="auto" src="media"></video></main>
+            :root{color-scheme:dark}body{font-family:system-ui;background:#080b10;color:#f7f8fa;display:grid;place-items:center;min-height:100vh;margin:0}.card{max-width:28rem;padding:2rem;background:#151922;border-radius:1.5rem;text-align:center}button{background:#66e3c4;color:#080b10;border:0;border-radius:999px;font-weight:700;padding:1rem 1.5rem;font-size:1rem}.muted{color:#a8b0c0}audio{width:100%;margin-top:1rem}</style></head>
+            <body><main class="card"><h1>Phone audio</h1><p class="muted">Keep this page open and the phone on the same Wi-Fi network as the TV.</p><button id="start">Start synchronized audio</button><p id="status" class="muted">Waiting</p><audio id="media" playsinline preload="auto" src="media"></audio></main>
             <script>
             const m=document.querySelector('#media'),s=document.querySelector('#status'),b=document.querySelector('#start');let enabled=false;
-            b.onclick=async()=>{enabled=true;m.muted=false;try{await m.play();s.textContent='Connected'}catch(e){s.textContent='Tap again to allow audio'}};
-            async function sync(){if(!enabled)return;try{const r=await fetch('state',{cache:'no-store'}),x=await r.json(),target=x.positionMs/1000,d=Math.abs(m.currentTime-target);m.playbackRate=x.speed||1;if(d>.75)m.currentTime=target;if(x.playing&&m.paused)await m.play();if(!x.playing&&!m.paused)m.pause();s.textContent=x.playing?'Synchronized':'Paused'}catch(e){s.textContent='Reconnecting…'}}setInterval(sync,1000);
+            b.onclick=async()=>{enabled=true;m.muted=false;try{await m.play();await sync(true);b.textContent='Resync';s.textContent='Connected'}catch(e){enabled=false;s.textContent='Could not start audio. Check this browser can play the video, then tap again.'}};
+            m.onerror=()=>{s.textContent='This phone cannot decode the selected audio or video format.'};
+            async function sync(force=false){if(!enabled)return;try{const r=await fetch('state',{cache:'no-store'});if(!r.ok)throw new Error('state');const x=await r.json(),target=x.positionMs/1000,d=Math.abs(m.currentTime-target);m.playbackRate=x.speed||1;if(force||d>.65)m.currentTime=target;if(x.playing&&m.paused)await m.play();if(!x.playing&&!m.paused)m.pause();s.textContent=x.playing?'Synchronized':'Paused'}catch(e){s.textContent='Reconnecting…'}}setInterval(sync,500);
             </script></body></html>
         """.trimIndent()
     }
 }
-
