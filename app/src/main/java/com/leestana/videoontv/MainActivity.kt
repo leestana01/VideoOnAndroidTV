@@ -15,6 +15,7 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
@@ -38,6 +39,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var emptyState: View
     private lateinit var quickActions: View
     private lateinit var boostButton: TextView
+    private lateinit var openFileButton: TextView
+    private lateinit var seekFeedback: TextView
     private lateinit var store: PlaybackStore
     private lateinit var relayServer: AudioRelayServer
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -53,19 +56,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private val hideActions = Runnable {
-        if (currentUri != null && quickActions.visibility == View.VISIBLE) {
+        if (currentUri != null && player.playWhenReady && quickActions.visibility == View.VISIBLE) {
             val actionsHadFocus = quickActions.hasFocus()
             quickActions.visibility = View.GONE
             if (actionsHadFocus) playerView.requestFocus()
         }
     }
+    private val hideSeekFeedback = Runnable { seekFeedback.visibility = View.GONE }
 
     private val openFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { persistAndPlay(it) }
+        uri?.let { persistAndSelect(it) }
     }
 
     private val openFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        uri?.let { showFolder(it) }
+        uri?.let { openStorageRoot(it) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,7 +82,8 @@ class MainActivity : AppCompatActivity() {
         runCatching { relayServer.start(10_000, false) }
         mainHandler.post(snapshotTicker)
         configureActions()
-        intent?.data?.let(::play)
+        configureBackNavigation()
+        intent?.data?.let(::selectMedia)
     }
 
     private fun bindViews() {
@@ -86,8 +91,10 @@ class MainActivity : AppCompatActivity() {
         emptyState = findViewById(R.id.empty_state)
         quickActions = findViewById(R.id.quick_actions)
         boostButton = findViewById(R.id.boost)
-        findViewById<TextView>(R.id.open_file).setOnClickListener { openFile.launch(arrayOf("video/*", "audio/*")) }
-        findViewById<TextView>(R.id.open_folder).setOnClickListener { openFolder.launch(null) }
+        openFileButton = findViewById(R.id.open_file)
+        seekFeedback = findViewById(R.id.seek_feedback)
+        openFileButton.setOnClickListener { openFile.launch(arrayOf("video/*", "audio/*")) }
+        findViewById<TextView>(R.id.open_folder).setOnClickListener { browseStorage() }
     }
 
     private fun createPlayer() {
@@ -107,6 +114,9 @@ class MainActivity : AppCompatActivity() {
                     attachEnhancer(audioSessionId)
                     applyBoost()
                 }
+                override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                    if (currentUri != null) showQuickActions(requestFocus = false, autoHide = playWhenReady)
+                }
                 override fun onEvents(player: Player, events: Player.Events) = updateSnapshot()
                 override fun onPlayerError(error: PlaybackException) {
                     Toast.makeText(this@MainActivity, readableError(error), Toast.LENGTH_LONG).show()
@@ -119,7 +129,8 @@ class MainActivity : AppCompatActivity() {
     private fun configureActions() {
         findViewById<TextView>(R.id.change_media).setOnClickListener {
             hideQuickActions()
-            openFile.launch(arrayOf("video/*", "audio/*"))
+            returnHome()
+            browseStorage()
         }
         boostButton.setOnClickListener {
             hideQuickActions()
@@ -131,42 +142,104 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun persistAndPlay(uri: Uri) {
+    private fun configureBackNavigation() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (currentUri != null) {
+                    returnHome()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+    }
+
+    private fun persistAndSelect(uri: Uri) {
         runCatching {
             contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        play(uri)
+        selectMedia(uri)
     }
 
-    private fun play(uri: Uri) {
+    private fun selectMedia(uri: Uri) {
+        val resumePosition = store.load(uri)
+        if (!PlaybackPosition.canResume(resumePosition)) {
+            play(uri, 0)
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.resume_title)
+            .setMessage(getString(R.string.resume_at, PlaybackPosition.format(resumePosition)))
+            .setPositiveButton(R.string.resume) { _, _ -> play(uri, resumePosition) }
+            .setNeutralButton(R.string.start_over) { _, _ ->
+                store.clear(uri)
+                play(uri, 0)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun play(uri: Uri, startPositionMs: Long) {
         store.save(currentUri, player.currentPosition)
         currentUri = uri
         emptyState.visibility = View.GONE
-        showQuickActions(requestFocus = false)
-        player.setMediaItem(MediaItem.fromUri(uri), store.load(uri))
+        playerView.visibility = View.VISIBLE
+        seekFeedback.visibility = View.GONE
+        showQuickActions(requestFocus = false, autoHide = true)
+        player.setMediaItem(MediaItem.fromUri(uri), startPositionMs)
         player.prepare()
         player.playWhenReady = true
         playerView.showController()
         updateSnapshot()
     }
 
-    private fun showFolder(treeUri: Uri) {
+    private fun browseStorage() {
+        val savedRoot = store.loadStorageRoot()
+        val document = savedRoot?.let { DocumentFile.fromTreeUri(this, it) }
+        if (document?.exists() == true && document.isDirectory) {
+            showMediaBrowser(document)
+        } else {
+            openFolder.launch(null)
+        }
+    }
+
+    private fun openStorageRoot(treeUri: Uri) {
         runCatching {
             contentResolver.takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        val files = DocumentFile.fromTreeUri(this, treeUri)?.listFiles()
-            ?.filter { it.isFile && (it.type?.startsWith("video/") == true || it.type?.startsWith("audio/") == true) }
-            ?.sortedBy { it.name?.lowercase() }
-            .orEmpty()
-        if (files.isEmpty()) {
-            Toast.makeText(this, "No playable media found in this folder", Toast.LENGTH_LONG).show()
+        val root = DocumentFile.fromTreeUri(this, treeUri)
+        if (root == null || !root.isDirectory) {
+            Toast.makeText(this, R.string.storage_unavailable, Toast.LENGTH_LONG).show()
             return
         }
-        AlertDialog.Builder(this)
-            .setTitle("Choose media")
-            .setItems(files.map { it.name ?: "Untitled" }.toTypedArray()) { _, index -> play(files[index].uri) }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        store.saveStorageRoot(treeUri)
+        showMediaBrowser(root)
+    }
+
+    private fun showMediaBrowser(root: DocumentFile) {
+        MediaBrowserDialog(
+            context = this,
+            onMediaSelected = { selectMedia(it.uri) },
+            onChooseStorage = { openFolder.launch(null) },
+        ).show(root)
+    }
+
+    private fun returnHome() {
+        store.save(currentUri, player.currentPosition)
+        currentUri = null
+        mainHandler.removeCallbacks(hideActions)
+        mainHandler.removeCallbacks(hideSeekFeedback)
+        player.pause()
+        player.stop()
+        player.clearMediaItems()
+        playerView.hideController()
+        playerView.visibility = View.GONE
+        quickActions.visibility = View.GONE
+        seekFeedback.visibility = View.GONE
+        emptyState.visibility = View.VISIBLE
+        snapshots.update(0, false, 1f)
+        openFileButton.requestFocus()
     }
 
     private fun showBoostDialog() {
@@ -275,16 +348,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showQuickActions(requestFocus: Boolean) {
+    private fun showQuickActions(requestFocus: Boolean, autoHide: Boolean) {
         quickActions.visibility = View.VISIBLE
         mainHandler.removeCallbacks(hideActions)
         if (requestFocus) boostButton.requestFocus()
-        mainHandler.postDelayed(hideActions, ACTIONS_TIMEOUT_MS)
+        if (autoHide) mainHandler.postDelayed(hideActions, ACTIONS_TIMEOUT_MS)
     }
 
     private fun hideQuickActions() {
         mainHandler.removeCallbacks(hideActions)
         hideActions.run()
+    }
+
+    private fun showSeekFeedback(forward: Boolean) {
+        seekFeedback.setText(if (forward) R.string.seek_forward_feedback else R.string.seek_back_feedback)
+        seekFeedback.visibility = View.VISIBLE
+        mainHandler.removeCallbacks(hideSeekFeedback)
+        mainHandler.postDelayed(hideSeekFeedback, SEEK_FEEDBACK_TIMEOUT_MS)
+        playerView.showController()
+    }
+
+    private fun seekBack() {
+        player.seekBack()
+        showSeekFeedback(forward = false)
+    }
+
+    private fun seekForward() {
+        player.seekForward()
+        showSeekFeedback(forward = true)
     }
 
     private fun readableError(error: PlaybackException): String = when (error.errorCode) {
@@ -296,22 +387,33 @@ class MainActivity : AppCompatActivity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN || currentUri == null) return super.dispatchKeyEvent(event)
-        if ((currentFocus?.isClickable == true && currentFocus !== playerView) || currentFocus is SeekBar) {
+        val quickActionNavigation = quickActions.visibility == View.VISIBLE && quickActions.hasFocus()
+        if (quickActionNavigation && event.keyCode in DPAD_NAVIGATION_KEYS) {
             return super.dispatchKeyEvent(event)
         }
         return when (event.keyCode) {
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
                 if (player.isPlaying) player.pause() else player.play(); playerView.showController(); true
             }
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                player.seekBack(); playerView.showController(); true
+                seekBack(); true
             }
             KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                player.seekForward(); playerView.showController(); true
+                seekForward(); true
+            }
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                if (currentFocus?.isClickable == true && currentFocus !== playerView) {
+                    super.dispatchKeyEvent(event)
+                } else {
+                    if (player.isPlaying) player.pause() else player.play(); playerView.showController(); true
+                }
             }
             KeyEvent.KEYCODE_MEDIA_PLAY -> { player.play(); true }
             KeyEvent.KEYCODE_MEDIA_PAUSE -> { player.pause(); true }
-            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> { showQuickActions(requestFocus = true); true }
+            KeyEvent.KEYCODE_DPAD_UP -> { showQuickActions(requestFocus = true, autoHide = player.playWhenReady); true }
+            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> {
+                showQuickActions(requestFocus = true, autoHide = player.playWhenReady); true
+            }
             else -> super.dispatchKeyEvent(event)
         }
     }
@@ -324,6 +426,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         mainHandler.removeCallbacks(snapshotTicker)
         mainHandler.removeCallbacks(hideActions)
+        mainHandler.removeCallbacks(hideSeekFeedback)
         relayServer.stop()
         loudnessEnhancer?.release()
         player.release()
@@ -333,5 +436,14 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val SNAPSHOT_INTERVAL_MS = 250L
         private const val ACTIONS_TIMEOUT_MS = 5_000L
+        private const val SEEK_FEEDBACK_TIMEOUT_MS = 800L
+        private val DPAD_NAVIGATION_KEYS = setOf(
+            KeyEvent.KEYCODE_DPAD_LEFT,
+            KeyEvent.KEYCODE_DPAD_RIGHT,
+            KeyEvent.KEYCODE_DPAD_UP,
+            KeyEvent.KEYCODE_DPAD_DOWN,
+            KeyEvent.KEYCODE_DPAD_CENTER,
+            KeyEvent.KEYCODE_ENTER,
+        )
     }
 }

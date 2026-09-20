@@ -2,6 +2,18 @@
 
 All notable changes are documented here. Versions follow Semantic Versioning.
 
+## 1.0.2 - 2026-09-20
+
+### Fixed
+
+- Keep the player surface detached from the home screen and return home cleanly with Back.
+- Add a remote-focused hierarchical browser for granted folders and removable USB storage.
+- Recognize common media extensions when storage providers return generic MIME types.
+- Prompt to resume or restart previously watched media.
+- Make D-pad left/right and hardware rewind/fast-forward seek by 10 seconds with on-screen feedback.
+- Show quick actions whenever playback is paused, keep them visible while paused, and allow D-pad Up to restore them.
+
+
 ## 1.0.1 - 2026-09-20
 
 ### Fixed

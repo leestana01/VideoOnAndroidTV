@@ -2,9 +2,23 @@
     <string name="app_name">Vela Player</string>
     <string name="open_video">Open video</string>
     <string name="open_usb">Browse USB / folder</string>
+    <string name="browse_media">Browse media</string>
+    <string name="browser_choose_storage">Choose storage</string>
+    <string name="browser_empty">No folders or playable media in this location.</string>
+    <string name="browser_unreadable">This folder cannot be read.</string>
+    <string name="browser_up">[..] Up</string>
+    <string name="browser_folder">[Folder] %1$s</string>
+    <string name="browser_media">[Media] %1$s</string>
+    <string name="browser_untitled">Untitled</string>
+    <string name="storage_unavailable">This storage location is unavailable.</string>
+    <string name="resume_title">Continue watching?</string>
+    <string name="resume_at">Resume from %1$s</string>
+    <string name="resume">Resume</string>
+    <string name="start_over">Start from beginning</string>
+    <string name="seek_back_feedback">−10 seconds</string>
+    <string name="seek_forward_feedback">+10 seconds</string>
     <string name="phone_audio">Phone audio</string>
     <string name="audio_boost">Audio %1$d%%</string>
     <string name="empty_title">Your screen. Your media.</string>
     <string name="empty_body">Play local, USB, network and shared files with a remote-first interface.</string>
 </resources>
-
