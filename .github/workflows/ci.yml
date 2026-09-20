@@ -77,8 +77,12 @@ jobs:
             adb shell ps | grep 'com.leestana.videoontv' || { adb logcat -d -t 200; exit 1; }
             adb shell dumpsys activity top | grep 'ACTIVITY com.leestana.videoontv/.MainActivity' || { adb logcat -d -t 200; exit 1; }
             adb push seek-fixture.mp4 /sdcard/Download/seek-fixture.mp4
+            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/seek-fixture.mp4
+            sleep 2
+            MEDIA_ID=$(adb shell content query --uri content://media/external/video/media --projection _id:_data | sed -n '/seek-fixture.mp4/ s/.*_id=\([0-9][0-9]*\).*/\1/p' | tail -1)
+            test -n "$MEDIA_ID"
             adb logcat -c
-            adb shell am start -W -a android.intent.action.VIEW -c android.intent.category.DEFAULT -t video/mp4 -d 'content://com.android.externalstorage.documents/document/primary%3ADownload%2Fseek-fixture.mp4' -f 0x00000001 com.leestana.videoontv
+            adb shell am start -W -a android.intent.action.VIEW -c android.intent.category.DEFAULT -t video/mp4 -d "content://media/external/video/media/$MEDIA_ID" -f 0x00000001 com.leestana.videoontv
             sleep 7
             adb shell input keyevent 90
             sleep 3
