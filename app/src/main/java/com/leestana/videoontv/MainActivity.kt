@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageView
@@ -27,6 +28,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
@@ -109,7 +111,9 @@ class MainActivity : AppCompatActivity() {
         val renderers = DefaultRenderersFactory(this)
             .setEnableDecoderFallback(true)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+        val mediaSourceFactory = DefaultMediaSourceFactory(VelaDataSourceFactory(this))
         player = ExoPlayer.Builder(this, renderers)
+            .setMediaSourceFactory(mediaSourceFactory)
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(10_000)
             .build().apply {
@@ -126,6 +130,16 @@ class MainActivity : AppCompatActivity() {
                     if (currentUri != null) showQuickActions(requestFocus = false, autoHide = playWhenReady)
                 }
                 override fun onEvents(player: Player, events: Player.Events) = updateSnapshot()
+                override fun onPositionDiscontinuity(
+                    oldPosition: Player.PositionInfo,
+                    newPosition: Player.PositionInfo,
+                    reason: Int,
+                ) {
+                    Log.i(
+                        SEEK_LOG_TAG,
+                        "applied oldMs=${oldPosition.positionMs} newMs=${newPosition.positionMs} reason=$reason",
+                    )
+                }
                 override fun onPlayerError(error: PlaybackException) {
                     Toast.makeText(this@MainActivity, readableError(error), Toast.LENGTH_LONG).show()
                 }
@@ -395,7 +409,14 @@ class MainActivity : AppCompatActivity() {
             showSeekFeedback(R.string.seek_unavailable)
             return
         }
+        val origin = player.currentPosition
+        Log.i(SEEK_LOG_TAG, "request originMs=$origin targetMs=$target durationMs=${player.duration}")
         player.seekTo(target)
+        mainHandler.postDelayed({
+            if (::player.isInitialized && currentUri != null) {
+                Log.i(SEEK_LOG_TAG, "settled positionMs=${player.currentPosition} targetMs=$target")
+            }
+        }, SEEK_SETTLE_LOG_DELAY_MS)
         updateSnapshot()
         showSeekFeedback(feedbackRes)
     }
@@ -456,6 +477,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val SEEK_LOG_TAG = "VelaSeek"
+        private const val SEEK_SETTLE_LOG_DELAY_MS = 1_500L
         private const val SNAPSHOT_INTERVAL_MS = 250L
         private const val ACTIONS_TIMEOUT_MS = 5_000L
         private const val SEEK_FEEDBACK_TIMEOUT_MS = 800L
