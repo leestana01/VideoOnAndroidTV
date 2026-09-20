@@ -18,6 +18,8 @@ class SeekTargetTest {
 
     @Test fun `unknown duration still supports relative forward seeking`() {
         assertEquals(40_000L, SeekTarget.calculate(30_000, C.TIME_UNSET, 10_000, true))
+        assertEquals(40_000L, SeekTarget.calculate(30_000, 0, 10_000, true))
+        assertEquals(20_000L, SeekTarget.calculate(30_000, 0, -10_000, true))
     }
 
     @Test fun `does not reset when position is unavailable or media is not seekable`() {

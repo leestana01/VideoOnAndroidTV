@@ -17,7 +17,7 @@ Vela is a remote-first, open-source video player for Android TV, Google TV, proj
 Download the APK and matching SHA-256 file from [GitHub Releases](../../releases). On the TV, allow installation from the file manager used to open the APK. Verify the checksum before installation:
 
 ```sh
-sha256sum -c Vela-Player-1.0.4.apk.sha256
+sha256sum -c Vela-Player-1.0.5.apk.sha256
 ```
 
 GitHub Releases is the only official binary distribution channel. Every release note includes the APK signing certificate fingerprint.
