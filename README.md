@@ -17,7 +17,7 @@ Vela is a remote-first, open-source video player for Android TV, Google TV, proj
 Download the APK and matching SHA-256 file from [GitHub Releases](../../releases). On the TV, allow installation from the file manager used to open the APK. Verify the checksum before installation:
 
 ```sh
-sha256sum -c Vela-Player-1.0.2.apk.sha256
+sha256sum -c Vela-Player-1.0.4.apk.sha256
 ```
 
 GitHub Releases is the only official binary distribution channel. Every release note includes the APK signing certificate fingerprint.
@@ -34,7 +34,7 @@ Quick actions hide after five seconds while a video is playing. They appear imme
 
 ## USB and folder browser
 
-Choose **Browse USB / folder** and grant a storage root once through Android's required permission screen. All navigation after that happens in Vela's own full-screen, D-pad-first file browser. Directories are listed before playable media, common media extensions are recognized even when a USB provider reports a generic MIME type, and the selected root is remembered. Previously watched media offers **Resume** and **Start from beginning** before playback.
+Choose **Browse media** to enter Vela's full-screen, D-pad-first file browser. If no storage root has been connected yet, choose **Add USB / folder** once and grant read access through Android's required permission screen. Android's picker is used only for that permission grant; folder navigation and media selection remain inside Vela. Directories are listed before playable media, common media extensions are recognized when a USB provider reports a generic MIME type, and the selected root is remembered. Previously watched media offers **Resume** and **Start from beginning** before playback.
 
 ## Phone audio
 
@@ -43,7 +43,7 @@ Choose **Browse USB / folder** and grant a storage root once through Android's r
 3. Tap **Start synchronized audio** in the phone browser.
 4. Optionally choose **Mute TV**.
 
-The phone receives the selected media directly from the TV and synchronizes against the TV position twice per second. The randomized link expires when Vela exits. Playback is intentionally LAN-only and is not uploaded anywhere.
+The phone receives the selected media directly from the TV and synchronizes against the TV position twice per second. Vela supports browser HEAD/range requests, resolves missing USB file sizes through the file descriptor, and derives a usable MIME type when providers return a generic value. The randomized link expires when Vela exits. Playback is intentionally LAN-only and is not uploaded anywhere. The phone browser must still support the selected media's container and audio codec; AAC audio in MP4 has the widest mobile-browser compatibility.
 
 Android phones generally do not expose the Bluetooth A2DP Sink profile to third-party apps, so reliable direct TV-to-phone Bluetooth speaker mode is not possible across standard Android devices. Vela uses local Wi-Fi instead. A phone may still route browser audio to its own paired Bluetooth speaker or headphones.
 
@@ -74,7 +74,7 @@ Release builds are signed only when a local ignored `keystore.properties` file i
 - `MainActivity` owns the TV player surface and D-pad behavior.
 - `AudioGain` isolates safe gain mapping and is unit-tested.
 - `AudioRelayServer` exposes a tokenized, ephemeral HTTP range endpoint and synchronized receiver page on the LAN.
-- `MediaBrowserDialog` provides remote-first directory traversal for granted local and USB storage.
+- `MediaBrowserPanel` provides full-screen, remote-first directory traversal for granted local and USB storage.
 - `PlaybackStore` retains per-document resume positions locally.
 
 See [SECURITY.md](SECURITY.md) for the security model and reporting process and [CONTRIBUTING.md](CONTRIBUTING.md) for development standards.

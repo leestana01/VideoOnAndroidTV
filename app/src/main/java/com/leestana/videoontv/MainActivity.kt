@@ -39,7 +39,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var emptyState: View
     private lateinit var quickActions: View
     private lateinit var boostButton: TextView
-    private lateinit var openFileButton: TextView
+    private lateinit var openBrowserButton: TextView
     private lateinit var seekFeedback: TextView
     private lateinit var mediaBrowser: MediaBrowserPanel
     private lateinit var store: PlaybackStore
@@ -65,10 +65,6 @@ class MainActivity : AppCompatActivity() {
     }
     private val hideSeekFeedback = Runnable { seekFeedback.visibility = View.GONE }
 
-    private val openFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { persistAndSelect(it) }
-    }
-
     private val openFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { openStorageRoot(it) }
     }
@@ -92,7 +88,7 @@ class MainActivity : AppCompatActivity() {
         emptyState = findViewById(R.id.empty_state)
         quickActions = findViewById(R.id.quick_actions)
         boostButton = findViewById(R.id.boost)
-        openFileButton = findViewById(R.id.open_file)
+        openBrowserButton = findViewById(R.id.open_browser)
         seekFeedback = findViewById(R.id.seek_feedback)
         mediaBrowser = MediaBrowserPanel(
             context = this,
@@ -106,8 +102,7 @@ class MainActivity : AppCompatActivity() {
             },
             onChooseStorage = { openFolder.launch(null) },
         )
-        openFileButton.setOnClickListener { openFile.launch(arrayOf("video/*", "audio/*")) }
-        findViewById<TextView>(R.id.open_folder).setOnClickListener { browseStorage() }
+        openBrowserButton.setOnClickListener { browseStorage() }
     }
 
     private fun createPlayer() {
@@ -170,13 +165,6 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun persistAndSelect(uri: Uri) {
-        runCatching {
-            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        selectMedia(uri)
-    }
-
     private fun selectMedia(uri: Uri) {
         val resumePosition = store.load(uri)
         if (!PlaybackPosition.canResume(resumePosition)) {
@@ -215,7 +203,7 @@ class MainActivity : AppCompatActivity() {
         if (document?.exists() == true && document.isDirectory) {
             showMediaBrowser(document)
         } else {
-            openFolder.launch(null)
+            mediaBrowser.showWithoutRoot()
         }
     }
 
@@ -251,7 +239,7 @@ class MainActivity : AppCompatActivity() {
         emptyState.visibility = View.VISIBLE
         mediaBrowser.hide()
         snapshots.update(0, false, 1f)
-        openFileButton.requestFocus()
+        openBrowserButton.requestFocus()
     }
 
     private fun showBoostDialog() {
@@ -389,11 +377,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun seekBy(deltaMs: Long, feedbackRes: Int) {
+        val localMedia = currentUri?.scheme == "content" || currentUri?.scheme == "file"
+        val canSeek = SeekCapability.canSeek(
+            media3Seekable = player.isCurrentMediaItemSeekable,
+            localMedia = localMedia,
+            positionMs = player.currentPosition,
+            durationMs = player.duration,
+            playbackState = player.playbackState,
+        )
         val target = SeekTarget.calculate(
             positionMs = player.currentPosition,
             durationMs = player.duration,
             deltaMs = deltaMs,
-            isSeekable = player.isCurrentMediaItemSeekable,
+            isSeekable = canSeek,
         )
         if (target == null) {
             showSeekFeedback(R.string.seek_unavailable)
