@@ -35,6 +35,21 @@ class MediaBrowserPanel(
         render()
     }
 
+    fun showWithoutRoot() {
+        path.clear()
+        panel.visibility = View.VISIBLE
+        title.setText(R.string.browser_title)
+        pathLabel.setText(R.string.browser_no_storage)
+        entriesView.removeAllViews()
+        entriesView.addView(TextView(context).apply {
+            setText(R.string.browser_grant_explanation)
+            setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
+            textSize = 18f
+            setPadding(22, 28, 22, 28)
+        })
+        panel.findViewById<TextView>(R.id.browser_choose_storage).requestFocus()
+    }
+
     fun hide() {
         panel.visibility = View.GONE
     }

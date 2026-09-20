@@ -1,12 +1,12 @@
 <resources>
     <string name="app_name">Vela Player</string>
-    <string name="open_video">Open video</string>
-    <string name="open_usb">Browse USB / folder</string>
     <string name="browse_media">Browse media</string>
-    <string name="browser_choose_storage">Choose storage</string>
+    <string name="browser_choose_storage">Add USB / folder</string>
     <string name="browser_title">Media browser</string>
     <string name="browser_storage">Storage</string>
     <string name="browser_close">Close</string>
+    <string name="browser_no_storage">No storage root connected</string>
+    <string name="browser_grant_explanation">Vela browses media in this screen. Add a USB drive or folder once to grant Android read access.</string>
     <string name="browser_empty">No folders or playable media in this location.</string>
     <string name="browser_unreadable">This folder cannot be read.</string>
     <string name="browser_up">[..] Up</string>

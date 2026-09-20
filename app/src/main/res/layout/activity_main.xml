@@ -73,25 +73,13 @@
             android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/open_file"
+                android:id="@+id/open_browser"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/button_background"
                 android:focusable="true"
                 android:gravity="center"
-                android:text="@string/open_video"
-                android:textColor="@color/text_primary"
-                android:textSize="17sp" />
-
-            <TextView
-                android:id="@+id/open_folder"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="18dp"
-                android:background="@drawable/button_background"
-                android:focusable="true"
-                android:gravity="center"
-                android:text="@string/open_usb"
+                android:text="@string/browse_media"
                 android:textColor="@color/text_primary"
                 android:textSize="17sp" />
         </LinearLayout>
